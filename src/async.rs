@@ -155,7 +155,7 @@ impl AsyncSession {
         pdu::build_get(self.community.as_slice(), req_id, names, &mut send_pdu)?;
 
         let response = self.send_and_recv(send_pdu).await?;
-        handle_response(req_id, &self.community, response)
+        handle_response(req_id, &self.community, &response)
     }
 
     pub async fn getnext(&self, name: &[u32]) -> SnmpResult<SnmpPdu> {
@@ -165,7 +165,7 @@ impl AsyncSession {
         pdu::build_getnext(&self.community, req_id, name, &mut send_pdu)?;
 
         let buf = self.send_and_recv(send_pdu).await?;
-        handle_response(req_id, &self.community, buf)
+        handle_response(req_id, &self.community, &buf)
     }
 
     pub async fn getbulk<T, I, C>(
@@ -192,7 +192,7 @@ impl AsyncSession {
         )?;
 
         let buf = self.send_and_recv(send_pdu).await?;
-        handle_response(req_id, &self.community, buf)
+        handle_response(req_id, &self.community, &buf)
     }
 
     /// # Panics if any of the values are not one of these supported types:

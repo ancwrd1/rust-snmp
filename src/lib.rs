@@ -17,6 +17,7 @@
 //! - SET
 //! - Basic SNMPv2 types
 //! - Synchronous requests
+//! - Broadcast request and many responses
 //! - UDP transport
 //!
 //! Currently does not support:
@@ -103,6 +104,28 @@
 //!     println!("{} => {:?}", name, val);
 //! }
 //! ```
+//! ## get_all_responses
+//! ```no_run
+//! use std::time::Duration;
+//! use snmp::SyncSession;
+//! use snmp::utils::oid_str_to_vec32 as to_vec;
+//!
+//! let agent_addr = "192.168.1.255:161";
+//! let community = b"public";
+//! let timeout = Duration::from_secs(2);
+//!
+//! let oid_description = to_vec("1.3.6.1.2.1.1.1").unwrap();
+//! let oid_id = to_vec("1.3.6.1.2.1.1.2").unwrap();
+//! let arr_oid = &[oid_description, oid_id];
+//!
+//! let mut sess = SyncSession::builder(agent_addr)
+//!     .community(community)
+//!     .build()
+//!     .unwrap();
+//!
+//! let responses = sess.get_all_responses(arr_oid, timeout).unwrap();
+//! println!("responses: {:?}", responses);
+//! ```
 
 #![cfg_attr(feature = "private-tests", feature(test))]
 #![allow(unknown_lints, clippy::doc_markdown)]
@@ -146,6 +169,24 @@ pub enum SnmpError {
 }
 
 pub type SnmpResult<T> = Result<T, SnmpError>;
+
+pub struct ResponseItem {
+    address: String, // like IPv4('192.168.1.1') or IPv6(_)
+    data: SnmpPdu,
+}
+
+impl fmt::Debug for ResponseItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut res = write!(f, "IP({}):\r\n", self.address.to_string());
+        let mut varbinds_cur = self.data.varbinds.clone();
+        while let Some((id, value)) = varbinds_cur.next() {
+            res = write!(f, "  OID({}): {:?}\r\n", id, value);
+        }
+        res
+    }
+}
+
+pub mod utils;
 
 const BUFFER_SIZE: usize = 4096;
 
@@ -1210,7 +1251,7 @@ impl Iterator for AsnReader {
     }
 }
 
-fn handle_response(req_id: i32, community: &[u8], response: Vec<u8>) -> SnmpResult<SnmpPdu> {
+fn handle_response(req_id: i32, community: &[u8], response: &[u8]) -> SnmpResult<SnmpPdu> {
     let resp = SnmpPdu::from_bytes(response)?;
     if resp.message_type != SnmpMessageType::Response {
         return Err(SnmpError::AsnWrongType);
@@ -1349,4 +1390,9 @@ impl Iterator for Varbinds {
         }
         None
     }
+}
+
+struct ResponseItemInt {
+    address: String, // like IPv4('192.168.1.1') or IPv6(_)
+    data: Vec<u8>,
 }
