@@ -107,15 +107,14 @@
 //! ## get_all_responses
 //! ```no_run
 //! use std::time::Duration;
-//! use snmp::SyncSession;
-//! use snmp::utils::oid_str_to_vec32 as to_vec;
+//! use snmp::{SyncSession, Oid, FromStr};
 //!
 //! let agent_addr = "192.168.1.255:161";
 //! let community = b"public";
 //! let timeout = Duration::from_secs(2);
 //!
-//! let oid_description = to_vec("1.3.6.1.2.1.1.1").unwrap();
-//! let oid_id = to_vec("1.3.6.1.2.1.1.2").unwrap();
+//! let oid_description = Oid::from_str("1.3.6.1.2.1.1.1").unwrap();
+//! let oid_id = Oid::from_str("1.3.6.1.2.1.1.2").unwrap();
 //! let arr_oid = &[oid_description, oid_id];
 //!
 //! let mut sess = SyncSession::builder(agent_addr)
@@ -130,6 +129,7 @@
 #![cfg_attr(feature = "private-tests", feature(test))]
 #![allow(unknown_lints, clippy::doc_markdown)]
 
+use std::net::IpAddr;
 use std::{fmt, mem, ptr};
 
 #[cfg(target_pointer_width = "32")]
@@ -150,6 +150,8 @@ pub use sync::SyncSession;
 
 #[derive(Debug, PartialEq)]
 pub enum SnmpError {
+    InvalidOid,
+
     AsnParseError,
     AsnInvalidLen,
     AsnWrongType,
@@ -170,23 +172,63 @@ pub enum SnmpError {
 
 pub type SnmpResult<T> = Result<T, SnmpError>;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Oid(pub Vec<u32>);
+
+pub use std::str::FromStr;
+
+/// converts oid-string like "1.3.6" into Oid(Vec<u32>[1, 3, 6])
+///
+/// # Examples
+/// ```
+/// use snmp::{Oid, FromStr};
+///
+/// assert_eq!(Oid::from_str("1.3.6"), Ok(Oid(vec![1, 3, 6])));
+///
+/// // skip a leading dot
+/// assert_eq!(Oid::from_str(".1.3.6"), Ok(Oid(vec![1, 3, 6])));
+///
+/// // wrong oid
+/// assert!(Oid::from_str("1.3.6.").is_err());
+/// ```
+impl FromStr for Oid {
+    type Err = SnmpError;
+
+    fn from_str(oid: &str) -> Result<Self, Self::Err> {
+        // skip a leading dot
+        let oid_short = if oid.starts_with('.') { &oid[1..] } else { oid };
+
+        let result: Result<Vec<u32>, _> = oid_short.split('.').map(|s| s.parse::<u32>()).collect();
+
+        if let Ok(arr) = result {
+            Ok(Oid(arr))
+        } else {
+            Err(SnmpError::InvalidOid)
+        }
+    }
+}
+
+impl AsRef<[u32]> for Oid {
+    fn as_ref(&self) -> &[u32] {
+        self.0.as_ref()
+    }
+}
+
 pub struct ResponseItem {
-    address: String, // like IPv4('192.168.1.1') or IPv6(_)
+    address: IpAddr,
     data: SnmpPdu,
 }
 
 impl fmt::Debug for ResponseItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut res = write!(f, "IP({}):\r\n", self.address.to_string());
+        write!(f, "IP({:?}): {{ ", self.address)?;
         let mut varbinds_cur = self.data.varbinds.clone();
         while let Some((id, value)) = varbinds_cur.next() {
-            res = write!(f, "  OID({}): {:?}\r\n", id, value);
+            write!(f, "OID({}): ({:?}), ", id, value)?;
         }
-        res
+        write!(f, "}}")
     }
 }
-
-pub mod utils;
 
 const BUFFER_SIZE: usize = 4096;
 
@@ -1392,7 +1434,7 @@ impl Iterator for Varbinds {
     }
 }
 
-struct ResponseItemInt {
-    address: String, // like IPv4('192.168.1.1') or IPv6(_)
+struct ResponsePacket {
+    address: IpAddr,
     data: Vec<u8>,
 }

@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    handle_response, pdu, ResponseItem, ResponseItemInt, SnmpError, SnmpMessageType, SnmpPdu,
+    handle_response, pdu, ResponseItem, ResponsePacket, SnmpError, SnmpMessageType, SnmpPdu,
     SnmpResult, Value, BUFFER_SIZE,
 };
 
@@ -109,7 +109,7 @@ impl SyncSession {
         Ok(socket)
     }
 
-    fn send_and_recv(&self, pdu: &pdu::Buf) -> SnmpResult<ResponseItemInt> {
+    fn send_and_recv(&self, pdu: &pdu::Buf) -> SnmpResult<ResponsePacket> {
         if let Ok(_pdu_len) = self.socket.send_to(&pdu[..], self.destination) {
             Self::recv_one(&self.socket)
         } else {
@@ -117,15 +117,15 @@ impl SyncSession {
         }
     }
 
-    fn recv_one(socket: &UdpSocket) -> SnmpResult<ResponseItemInt> {
+    fn recv_one(socket: &UdpSocket) -> SnmpResult<ResponsePacket> {
         let mut buf_out = vec![0u8; BUFFER_SIZE];
 
         if let Ok((size, src_addr)) = socket.recv_from(&mut buf_out[..]) {
             unsafe {
                 buf_out.set_len(size);
             }
-            Ok(ResponseItemInt {
-                address: src_addr.ip().to_string(),
+            Ok(ResponsePacket {
+                address: src_addr.ip().into(),
                 data: buf_out,
             })
         } else {
@@ -178,34 +178,36 @@ impl SyncSession {
             .send_to(&self.send_pdu[..], self.destination)
             .map_err(|_| SnmpError::SendError)?;
 
-        let ts1 = Instant::now();
+        let ts_sent = Instant::now();
 
         // recv all responses
-        let mut vec1: Vec<ResponseItemInt> = Vec::new();
+        let mut responses: Vec<ResponsePacket> = Vec::new();
         loop {
-            let response = Self::recv_one(&socket);
-            if response.is_err() || ts1.elapsed() >= timeout {
-                // skip any errors or delayed response
+            let recv_result = Self::recv_one(&socket);
+            if ts_sent.elapsed() >= timeout {
                 break;
             }
-            vec1.push(response.unwrap());
+            if let Ok(packet) = recv_result {
+                responses.push(packet);
+            }
         }
 
         // parsing to SnmpPdu
-        let mut vec2: Vec<ResponseItem> = Vec::new();
-        for item in vec1.iter() {
-            let r1 = handle_response(req_id, self.community.as_slice(), item.data.as_slice());
-            if r1.is_ok() {
-                vec2.push(ResponseItem {
-                    address: item.address.clone(),
-                    data: r1.unwrap(),
+        let mut items: Vec<ResponseItem> = Vec::new();
+        for response in responses {
+            let res_pdu =
+                handle_response(req_id, self.community.as_slice(), response.data.as_slice());
+            if let Ok(data) = res_pdu {
+                items.push(ResponseItem {
+                    address: response.address,
+                    data: data,
                 })
             } else {
                 // Error in response! - skip!
             }
         }
 
-        Ok(vec2)
+        Ok(items)
     }
 
     pub fn getbulk<T>(
