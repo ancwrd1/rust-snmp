@@ -123,7 +123,7 @@ impl SyncSession {
         if let Ok((size, src_addr)) = socket.recv_from(&mut buf_out[..]) {
             buf_out.truncate(size);
             Ok(ResponsePacket {
-                address: src_addr.ip().into(),
+                address: src_addr.ip(),
                 data: buf_out,
             })
         } else {
@@ -198,7 +198,7 @@ impl SyncSession {
             if let Ok(data) = res_pdu {
                 items.push(ResponseItem {
                     address: response.address,
-                    data: data,
+                    data,
                 })
             } else {
                 // Error in response! - skip!

@@ -222,8 +222,8 @@ pub struct ResponseItem {
 impl fmt::Debug for ResponseItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "IP({:?}): {{ ", self.address)?;
-        let mut varbinds_cur = self.data.varbinds.clone();
-        while let Some((id, value)) = varbinds_cur.next() {
+        let varbinds_cur = self.data.varbinds.clone();
+        for (id, value) in varbinds_cur {
             write!(f, "OID({}): ({:?}), ", id, value)?;
         }
         write!(f, "}}")
