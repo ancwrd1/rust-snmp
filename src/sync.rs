@@ -121,9 +121,7 @@ impl SyncSession {
         let mut buf_out = vec![0u8; BUFFER_SIZE];
 
         if let Ok((size, src_addr)) = socket.recv_from(&mut buf_out[..]) {
-            unsafe {
-                buf_out.set_len(size);
-            }
+            buf_out.truncate(size);
             Ok(ResponsePacket {
                 address: src_addr.ip().into(),
                 data: buf_out,
