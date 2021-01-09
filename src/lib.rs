@@ -215,8 +215,8 @@ impl AsRef<[u32]> for Oid {
 }
 
 pub struct ResponseItem {
-    address: IpAddr,
-    data: SnmpPdu,
+    pub address: IpAddr,
+    pub data: SnmpPdu,
 }
 
 impl fmt::Debug for ResponseItem {
