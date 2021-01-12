@@ -170,6 +170,12 @@ pub enum SnmpError {
     ReceiveError,
 }
 
+impl fmt::Display for SnmpError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
 pub type SnmpResult<T> = Result<T, SnmpError>;
 
 #[derive(Debug, Clone, PartialEq)]
