@@ -224,7 +224,7 @@ impl AsRef<[u32]> for Oid {
 pub struct ResponseItem {
     pub address: IpAddr,
     pub data: SnmpPdu,
-    pub time_response: Duration,
+    pub response_time: Duration,
 }
 
 impl fmt::Debug for ResponseItem {
@@ -1445,5 +1445,5 @@ impl Iterator for Varbinds {
 struct ResponsePacket {
     pub address: IpAddr,
     pub data: Vec<u8>,
-    pub time_response: Option<Duration>,
+    pub response_time: Option<Duration>,
 }
