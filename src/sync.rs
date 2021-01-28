@@ -125,7 +125,7 @@ impl SyncSession {
             Ok(ResponsePacket {
                 address: src_addr.ip(),
                 data: buf_out,
-                time_response_ms: 0,
+                time_response: None,
             })
         } else {
             Err(SnmpError::ReceiveError)
@@ -188,7 +188,7 @@ impl SyncSession {
                 break;
             }
             if let Ok(mut packet) = recv_result {
-                packet.time_response_ms = time_response.as_millis() as u32;
+                packet.time_response = Some(time_response);
                 responses.push(packet);
             }
         }
@@ -202,7 +202,7 @@ impl SyncSession {
                 items.push(ResponseItem {
                     address: response.address,
                     data,
-                    time_response_ms: response.time_response_ms,
+                    time_response: response.time_response.expect("time_response is None"),
                 })
             } else {
                 // Error in response! - skip!
