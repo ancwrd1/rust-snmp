@@ -130,6 +130,7 @@
 #![allow(unknown_lints, clippy::doc_markdown)]
 
 use std::net::IpAddr;
+use std::time::Duration;
 use std::{fmt, mem, ptr};
 
 #[cfg(target_pointer_width = "32")]
@@ -168,6 +169,12 @@ pub enum SnmpError {
     SocketError,
     SendError,
     ReceiveError,
+}
+
+impl fmt::Display for SnmpError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
 }
 
 pub type SnmpResult<T> = Result<T, SnmpError>;
@@ -217,6 +224,7 @@ impl AsRef<[u32]> for Oid {
 pub struct ResponseItem {
     pub address: IpAddr,
     pub data: SnmpPdu,
+    pub time_response: Duration,
 }
 
 impl fmt::Debug for ResponseItem {
@@ -1435,6 +1443,7 @@ impl Iterator for Varbinds {
 }
 
 struct ResponsePacket {
-    address: IpAddr,
-    data: Vec<u8>,
+    pub address: IpAddr,
+    pub data: Vec<u8>,
+    pub time_response: Option<Duration>,
 }
