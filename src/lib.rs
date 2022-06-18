@@ -203,7 +203,11 @@ impl FromStr for Oid {
 
     fn from_str(oid: &str) -> Result<Self, Self::Err> {
         // skip a leading dot
-        let oid_short = if oid.starts_with('.') { &oid[1..] } else { oid };
+        let oid_short = if let Some(stripped) = oid.strip_prefix('.') {
+            stripped
+        } else {
+            oid
+        };
 
         let result: Result<Vec<u32>, _> = oid_short.split('.').map(|s| s.parse::<u32>()).collect();
 
@@ -729,7 +733,7 @@ pub mod pdu {
         buf.push_sequence(|buf| {
             buf.push_constructed(snmp::MSG_RESPONSE, |buf| {
                 buf.push_sequence(|buf| {
-                    for &(ref name, ref val) in values.iter().rev() {
+                    for &(name, ref val) in values.iter().rev() {
                         buf.push_sequence(|buf| {
                             use Value::*;
                             match *val {
@@ -1210,7 +1214,7 @@ impl fmt::Debug for Value {
             Boolean(v) => write!(f, "BOOLEAN: {}", v),
             Integer(n) => write!(f, "INTEGER: {}", n),
             OctetString(ref slice) => {
-                write!(f, "OCTET STRING: {}", String::from_utf8_lossy(&slice))
+                write!(f, "OCTET STRING: {}", String::from_utf8_lossy(slice))
             }
             ObjectIdentifier(ref obj_id) => write!(f, "OBJECT IDENTIFIER: {}", obj_id),
             Null => write!(f, "NULL"),
@@ -1317,7 +1321,7 @@ fn handle_response(req_id: i32, community: &[u8], response: &[u8]) -> SnmpResult
 
 #[derive(Debug)]
 pub struct SnmpPdu {
-    version: i64,
+    pub version: i64,
     pub community: Vec<u8>,
     pub message_type: SnmpMessageType,
     pub req_id: i32,
