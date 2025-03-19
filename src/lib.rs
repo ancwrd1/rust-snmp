@@ -613,7 +613,7 @@ pub mod pdu {
                 buf.push_integer(i64::from(req_id))
             })?;
             buf.push_octet_string(community)?;
-            buf.push_integer(snmp::VERSION_2 as i64)
+            buf.push_integer(snmp::VERSION_2)
         })
     }
 
@@ -637,7 +637,7 @@ pub mod pdu {
                 buf.push_integer(i64::from(req_id))
             })?;
             buf.push_octet_string(community)?;
-            buf.push_integer(snmp::VERSION_2 as i64)
+            buf.push_integer(snmp::VERSION_2)
         })
     }
 
@@ -671,7 +671,7 @@ pub mod pdu {
                 buf.push_integer(i64::from(req_id))
             })?;
             buf.push_octet_string(community)?;
-            buf.push_integer(snmp::VERSION_2 as i64)
+            buf.push_integer(snmp::VERSION_2)
         })
     }
 
@@ -719,7 +719,7 @@ pub mod pdu {
                 buf.push_integer(i64::from(req_id))
             })?;
             buf.push_octet_string(community)?;
-            buf.push_integer(snmp::VERSION_2 as i64)
+            buf.push_integer(snmp::VERSION_2)
         })
     }
 
@@ -765,7 +765,7 @@ pub mod pdu {
                 buf.push_integer(i64::from(req_id))
             })?;
             buf.push_octet_string(community)?;
-            buf.push_integer(snmp::VERSION_2 as i64)
+            buf.push_integer(snmp::VERSION_2)
         })
     }
 }
@@ -832,7 +832,7 @@ impl PartialEq<[u32]> for ObjectIdentifier {
     }
 }
 
-impl<'b> PartialEq<&'b [u32]> for ObjectIdentifier {
+impl PartialEq<&'_ [u32]> for ObjectIdentifier {
     fn eq(&self, other: &&[u32]) -> bool {
         self == *other
     }
@@ -960,7 +960,7 @@ impl AsnReader {
                 bytes[(USIZE_LEN - length_len)..].copy_from_slice(&tail[..length_len]);
 
                 o = unsafe { mem::transmute::<[u8; USIZE_LEN], usize>(bytes).to_be() };
-                self.inner = tail[length_len as usize..].into();
+                self.inner = tail[length_len..].into();
                 Ok(o)
             }
         } else {
@@ -1348,17 +1348,17 @@ impl SnmpPdu {
         let mut response_pdu = AsnReader::from_bytes(rdr.read_raw(ident)?);
 
         let req_id = response_pdu.read_asn_integer()?;
-        if req_id < i64::from(i32::min_value()) || req_id > i64::from(i32::max_value()) {
+        if req_id < i64::from(i32::MIN) || req_id > i64::from(i32::MAX) {
             return Err(SnmpError::ValueOutOfRange);
         }
 
         let error_status = response_pdu.read_asn_integer()?;
-        if error_status < 0 || error_status > i64::from(i32::max_value()) {
+        if error_status < 0 || error_status > i64::from(i32::MAX) {
             return Err(SnmpError::ValueOutOfRange);
         }
 
         let error_index = response_pdu.read_asn_integer()?;
-        if error_index < 0 || error_index > i64::from(i32::max_value()) {
+        if error_index < 0 || error_index > i64::from(i32::MAX) {
             return Err(SnmpError::ValueOutOfRange);
         }
 

@@ -219,7 +219,7 @@ impl AsyncSession {
         pdu::build_set(&self.community, req_id, values, &mut send_pdu)?;
 
         let buf = self.send_and_recv(send_pdu).await?;
-        let resp = SnmpPdu::from_bytes(&buf)?;
+        let resp = SnmpPdu::from_bytes(buf)?;
 
         if resp.message_type != SnmpMessageType::Response {
             Err(SnmpError::AsnWrongType)
